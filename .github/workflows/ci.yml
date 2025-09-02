@@ -51,7 +51,11 @@ jobs:
 
     - name: Initialize database schema
       run: |
-        docker exec ${{ job.services.postgres.id }} psql -U postgres -d testdb -f /github/workspace/init.sql
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+        psql -h postgres -U postgres -d testdb -f init.sql
+      env:
+        PGPASSWORD: postgres
 
     - name: Run integration tests with pytest
       run: |
