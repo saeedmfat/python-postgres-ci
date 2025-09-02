@@ -35,6 +35,83 @@ python-postgres-ci/
 └── README.md                 # This file
 ```
 
+
+```mermaid
+flowchart TD
+    subgraph DeveloperLocalEnv [Developer Local Environment]
+        direction LR
+        A[Local Code Editor]
+        B[Local Git Repository]
+        A -- Commit & Push --> B
+    end
+
+    B -- Triggers via Push/PR --> GitHub
+
+    subgraph GitHub [GitHub Repository]
+        direction TB
+        C[Repository Code]
+        D[Workflow File<br>.github/workflows/ci.yml]
+        C -- Contains --> D
+    end
+
+    GitHub -- Triggers Workflow --> GHA[GitHub Actions Runner<br>ubuntu-latest]
+
+    subgraph GHA
+        direction TB
+        
+        subgraph RunnerHost [Host Runner OS]
+            direction LR
+            H[Job Steps]
+
+            subgraph ServiceNetwork [Service Container Network]
+                I[PostgreSQL Container<br>postgres:latest]
+            end
+
+            H -- Connects via localhost:5432 --> I
+        end
+
+        H -- Runs --> Step1
+        H -- Runs --> Step2
+        H -- Runs --> Step3
+        H -- Runs --> Step4
+        H -- Runs --> Step5
+
+        Step1[1. Checkout Code]
+        Step2[2. Setup Python]
+        Step3[3. Install Dependencies]
+        Step4[4. Initialize DB Schema]
+        Step5[5. Run Integration Tests]
+
+        Step4 -- Uses --> PSQL[psql client]
+        Step5 -- Uses --> Pytest[pytest]
+        
+        Step1 --> Step2 --> Step3 --> Step4 --> Step5
+    end
+
+    subgraph Details [Key Technical Details]
+        PostgresEnv[PostgreSQL Container Env Vars:<br>POSTGRES_USER=postgres<br>POSTGRES_PASSWORD=postgres<br>POSTGRES_DB=testdb]
+        RunnerEnv[Runner Host Env Vars:<br>POSTGRES_HOST=localhost<br>POSTGRES_USER=postgres<br>...]
+        InitSQL[Schema Load Command:<br>psql -h localhost -U postgres -d testdb -f init.sql]
+        TestCommand[Test Command:<br>python -m pytest tests/ -v]
+    end
+
+    I -- Configured With --> PostgresEnv
+    H -- Configured With --> RunnerEnv
+    Step4 -- Executes --> InitSQL
+    Step5 -- Executes --> TestCommand
+
+    Step5 -- Outputs --> Results
+
+    subgraph Results [CI Workflow Result]
+        direction LR
+        Pass["✅ Pass<br>(Green Checkmark)"]
+        Fail["❌ Fail<br>(Red X)"]
+    end
+
+    Results -- Reports Status to --> GitHub
+```
+
+
 ## ⚙️ Prerequisites
 
 - **Python 3.11+**
