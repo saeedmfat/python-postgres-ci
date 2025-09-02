@@ -29,7 +29,7 @@ jobs:
           - 5432:5432
 
     env:
-      POSTGRES_HOST: postgres 
+      POSTGRES_HOST: localhost 
       POSTGRES_USER: postgres 
       POSTGRES_PASSWORD: postgres 
       POSTGRES_DB: testdb 
@@ -51,16 +51,28 @@ jobs:
 
     - name: Initialize database schema
       run: |
+           # Step 4: (CRITICAL) Load the database schema into the running PostgreSQL service container.
+    - name: Initialize database schema
+      run: |
         sudo apt-get update
         sudo apt-get install -y postgresql-client
         echo "Waiting for PostgreSQL to be ready..."
-        until pg_isready -h postgres -U postgres -p 5432; do sleep 2;
+        for i in {1..30}; do
+          if pg_isready -h localhost -U postgres -p 5432; then
+            break
+          fi
+          sleep 2
         done
+        if ! pg_isready -h localhost -U postgres -p 5432; then
+          echo "PostgreSQL is not ready after waiting for 60 seconds. Exiting."
+          exit 1
+        fi
         echo "PostgreSQL is ready! Loading schema..."
-        psql -h postgres -U postgres -d testdb -f init.sql
-
+        psql -h localhost -U postgres -d testdb -f init.sql
+      # Set the password for psql/pg_isready to avoid an interactive prompt
       env:
         PGPASSWORD: postgres
+
 
     - name: Run integration tests with pytest
       run: |
